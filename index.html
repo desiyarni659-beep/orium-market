@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORIUM MARKET</title>
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  color:#e5e7eb;
+  background:
+    radial-gradient(circle at top, rgba(34,197,94,0.25), transparent 40%),
+    linear-gradient(135deg, #020617 0%, #020617 40%, #064e3b 100%);
+  background-attachment: fixed;
+}
+header{background:#020617;padding:16px;text-align:center}
+header h1{margin:0;color:#38bdf8}
+.stats{display:flex;gap:12px;justify-content:center;margin:15px;flex-wrap:wrap}
+.box{background:#020617;padding:12px 16px;border-radius:10px}
+.container{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.card{background:#020617;border-radius:12px;padding:16px}
+.price{font-weight:bold;margin:10px 0}
+button{background:#38bdf8;color:#020617;border:none;padding:8px;width:100%;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:5px}
+button.danger{background:#ef4444;color:#fff}
+input{width:100%;padding:8px;margin:6px 0;border-radius:6px;border:none}
+.admin, .login{padding:20px;background:#020617;margin:20px;border-radius:12px}
+.admin{display:none}
+footer{text-align:center;padding:16px;background:#020617}
+</style>
+</head>
+<body>
+<header>
+<h1>ORIUM MARKET</h1>
+<p>Admin Aman • Pembeli Tanpa Login</p>
+</header>
+
+<div class="stats" id="statsBox" style="display:flex">
+<div class="box">Transaksi: <b id="totalTrans">0</b></div>
+<div class="box">Terjual: <b id="totalTrans">0</b></div>
+</div>
+<div class="box">IDR: <b id="totalIncome" data-hidden="true">••••••</b> <button onclick="toggleIncome()" style="margin-left:6px;padding:4px 8px">👁</button></div>
+</div>
+
+<div class="container" id="productList"></div>
+
+<div class="login" id="loginBox">
+<h3>🔐 Login Admin</h3>
+<input id="username" placeholder="Username Admin">
+<input id="password" type="password" placeholder="Password Admin">
+<button onclick="login()">Login</button>
+</div>
+
+<div class="admin" id="adminPanel">
+<h3>➕ Tambah / Edit Item</h3>
+<input id="pName" placeholder="Nama Item">
+<input id="pDesc" placeholder="Deskripsi">
+<input id="pPrice" placeholder="Harga (angka)">
+<button onclick="saveProduct()">Simpan</button>
+<button onclick="logout()" class="danger">Logout</button>
+</div>
+
+<footer>© 2025 ORIUM MARKET</footer>
+
+<script>
+/* =====================
+   AKUN ADMIN (TERENKRIPSI)
+   ===================== */
+const ADMIN_USER = 'orium';
+const ADMIN_PASS_HASH = 'cGFzc3dvcmQ='; // base64("password") -> ganti!
+
+const WHATSAPP = '628xxxxxxxxxx';
+
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let income = Number(localStorage.getItem('income')) || 0;
+let trans = Number(localStorage.getItem('trans')) || 0;
+let isAdmin = localStorage.getItem('admin') === 'true';
+let editIndex = null;
+
+const productList = document.getElementById('productList');
+
+function hash(text){return btoa(text);}
+
+function login(){
+  if(username.value===ADMIN_USER && hash(password.value)===ADMIN_PASS_HASH){
+    isAdmin=true;
+    localStorage.setItem('admin','true');
+    render();
+  } else alert('Login gagal');
+}
+
+function logout(){
+  isAdmin=false;
+  localStorage.setItem('admin','false');
+  render();
+}
+
+function render(){
+  productList.innerHTML='';
+  products.forEach((p,i)=>{
+    const card=document.createElement('div');
+    card.className='card';
+    card.innerHTML=`
+      <h3>${p.name}</h3>
+      <p>${p.desc}</p>
+      <div class='price'>Rp ${p.price.toLocaleString()}</div>
+      <button onclick='buy(${i})'>Beli</button>
+      ${isAdmin?`
+        <button onclick='editProduct(${i})'>Edit</button>
+        <button class='danger' onclick='deleteProduct(${i})'>Hapus</button>
+      `:''}
+    `;
+    productList.appendChild(card);
+  });
+  totalIncome.innerText='Rp '+income.toLocaleString();
+  totalTrans.innerText=trans;
+  adminPanel.style.display=isAdmin?'block':'none';
+loginBox.style.display=isAdmin?'none':'block';
+statsBox.style.display='flex';
+const incEl=document.getElementById('totalIncome');
+if(incEl && incEl.dataset.hidden==='false'){
+  incEl.innerText='Rp '+income.toLocaleString();
+}
+}
+
+function saveProduct(){
+  const name=pName.value, desc=pDesc.value, price=Number(pPrice.value);
+  if(!name||!price) return alert('Lengkapi data');
+  if(editIndex===null) products.push({name,desc,price});
+  else products[editIndex]={name,desc,price};
+  editIndex=null;
+  localStorage.setItem('products',JSON.stringify(products));
+  pName.value=pDesc.value=pPrice.value='';
+  render();
+}
+
+function editProduct(i){
+  const p=products[i];
+  pName.value=p.name; pDesc.value=p.desc; pPrice.value=p.price;
+  editIndex=i;
+}
+
+function deleteProduct(i){
+  if(confirm('Hapus item?')){
+    products.splice(i,1);
+    localStorage.setItem('products',JSON.stringify(products));
+    render();
+  }
+}
+
+function buy(i){
+  if(!confirm('Konfirmasi beli?')) return;
+  income+=products[i].price;
+  trans++;
+  localStorage.setItem('income',income);
+  localStorage.setItem('trans',trans);
+  const msg=`Halo ORIUM MARKET, saya ingin membeli ${products[i].name}`;
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
+  render();
+}
+
+render();
+function toggleIncome(){
+  const el=document.getElementById('totalIncome');
+  if(el.dataset.hidden==='true'){
+    el.dataset.hidden='false';
+    el.innerText='Rp '+income.toLocaleString();
+  }else{
+    el.dataset.hidden='true';
+    el.innerText='••••••';
+  }
+}
+</script>
+</body>
+</html>
